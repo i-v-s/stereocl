@@ -17,7 +17,7 @@ include_directories(~/Mali_OpenCL_SDK_v1.1.0/include)
 
 #aux_source_directory(. SRC_LIST)
 
-add_executable(${PROJECT_NAME} main.cpp camera.cpp common.cpp image.cpp
+add_executable(${PROJECT_NAME} main.cpp common.cpp image.cpp
     ocvCalib/stereo_calib.cpp
     ocvCalib/stereo_match.cpp
 )

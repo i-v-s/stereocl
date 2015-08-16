@@ -11,18 +11,20 @@
 #include "common.h"
 #include "image.h"
 
+#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 #include <CL/cl.h>
 #include <iostream>
 
 #include "opencv2/opencv.hpp"
 
-
-#include "camera.h"
-
 using namespace std;
 
 #include "ocvCalib/stereo_calib.hpp"
 #include "ocvCalib/stereo_match.h"
+
+//#define OPENCL_VERSION_1_2  1.2f
+//#define OPENCL_VERSION_2_0  2.0f
 
 void testCams()
 {
@@ -60,7 +62,7 @@ void testCams()
                 cv::Mat dst;
                 cv::addWeighted(imgTranslated, 0.5, img2, 0.5, 0.0, dst);
                 char buf[20];
-                sprintf(buf, "d:%d", disp);
+                sprintf_s(buf, 20, "d:%d", disp);
                 cv::putText(dst, buf, cv::Point(10, 40), cv::FONT_HERSHEY_SIMPLEX, 1.0, 0);
                 cv::imshow("both", dst);
             }
@@ -85,10 +87,10 @@ void testCams()
                 imgCount++;
                 printf("Saving #%d...", imgCount);
                 char buf[20];
-                sprintf(buf, "left%d.jpg", imgCount);
+                sprintf_s(buf, 20, "left%d.jpg", imgCount);
                 cv::imwrite(buf, img1);
                 imagelist.push_back(buf);
-                sprintf(buf, "right%d.jpg", imgCount);
+                sprintf_s(buf, 20, "right%d.jpg", imgCount);
                 cv::imwrite(buf, img2);
                 imagelist.push_back(buf);
                 break;
@@ -103,6 +105,7 @@ void testCams()
                 break;
             case '.':
                 disp--;
+				if (disp < 0) disp = 0;
                 break;
             case ',':
                 disp++;
@@ -124,7 +127,7 @@ void testCams()
 int main(void)
 {
     testCams();
-    //cout << t;
+	/*
     cl_context context = 0;
     cl_command_queue commandQueue = 0;
     cl_program program = 0;
@@ -163,11 +166,11 @@ int main(void)
         return 1;
     }
 
-    /* [Setup memory] */
-    /* Number of elements in the arrays of input and output data. */
+    // [Setup memory] 
+    // Number of elements in the arrays of input and output data. 
     cl_int arraySize = 1000000;
 
-    /* The buffers are the size of the arrays. */
+    // The buffers are the size of the arrays. 
     size_t bufferSize = arraySize * sizeof(cl_int);
 
     /*
@@ -175,7 +178,7 @@ int main(void)
      * We ask the OpenCL implemenation to allocate memory rather than allocating
      * it on the CPU to avoid having to copy the data later.
      * The read/write flags relate to accesses to the memory from within the kernel.
-     */
+     *
     bool createMemoryObjectsSuccess = true;
 
     memoryObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR, bufferSize, NULL, &errorNumber);
@@ -193,10 +196,10 @@ int main(void)
         cerr << "Failed to create OpenCL buffer. " << __FILE__ << ":"<< __LINE__ << endl;
         return 1;
     }
-    /* [Setup memory] */
+    // [Setup memory] 
 
-    /* [Map the buffers to pointers] */
-    /* Map the memory buffers created by the OpenCL implementation to pointers so we can access them on the CPU. */
+    // [Map the buffers to pointers] 
+    // Map the memory buffers created by the OpenCL implementation to pointers so we can access them on the CPU.
     bool mapMemoryObjectsSuccess = true;
 
     cl_int* inputA = (cl_int*)clEnqueueMapBuffer(commandQueue, memoryObjects[0], CL_TRUE, CL_MAP_WRITE, 0, bufferSize, 0, NULL, NULL, &errorNumber);
@@ -211,23 +214,23 @@ int main(void)
        cerr << "Failed to map buffer. " << __FILE__ << ":"<< __LINE__ << endl;
        return 1;
     }
-    /* [Map the buffers to pointers] */
+    // [Map the buffers to pointers] 
 
-    /* [Initialize the input data] */
+    // [Initialize the input data] 
     for (int i = 0; i < arraySize; i++)
     {
        inputA[i] = i;
        inputB[i] = i;
     }
-    /* [Initialize the input data] */
+    // [Initialize the input data]
 
-    /* [Un-map the buffers] */
+    // [Un-map the buffers] 
     /*
      * Unmap the memory objects as we have finished using them from the CPU side.
      * We unmap the memory because otherwise:
      * - reads and writes to that memory from inside a kernel on the OpenCL side are undefined.
      * - the OpenCL implementation cannot free the memory when it is finished.
-     */
+     *
     if (!checkSuccess(clEnqueueUnmapMemObject(commandQueue, memoryObjects[0], inputA, 0, NULL, NULL)))
     {
        cleanUpOpenCL(context, commandQueue, program, kernel, memoryObjects, numberOfMemoryObjects);
@@ -241,9 +244,9 @@ int main(void)
        cerr << "Unmapping memory objects failed " << __FILE__ << ":"<< __LINE__ << endl;
        return 1;
     }
-    /* [Un-map the buffers] */
+    // [Un-map the buffers] 
 
-    /* [Set the kernel arguments] */
+    // [Set the kernel arguments] 
     bool setKernelArgumentsSuccess = true;
     setKernelArgumentsSuccess &= checkSuccess(clSetKernelArg(kernel, 0, sizeof(cl_mem), &memoryObjects[0]));
     setKernelArgumentsSuccess &= checkSuccess(clSetKernelArg(kernel, 1, sizeof(cl_mem), &memoryObjects[1]));
@@ -255,27 +258,27 @@ int main(void)
         cerr << "Failed setting OpenCL kernel arguments. " << __FILE__ << ":"<< __LINE__ << endl;
         return 1;
     }
-    /* [Set the kernel arguments] */
+    // [Set the kernel arguments] 
 
-    /* An event to associate with the Kernel. Allows us to retrieve profiling information later. */
+    // An event to associate with the Kernel. Allows us to retrieve profiling information later. 
     cl_event event = 0;
 
-    /* [Global work size] */
+    // [Global work size]
     /*
      * Each instance of our OpenCL kernel operates on a single element of each array so the number of
      * instances needed is the number of elements in the array.
-     */
+     *
     size_t globalWorksize[1] = {arraySize};
-    /* Enqueue the kernel */
+    // Enqueue the kernel 
     if (!checkSuccess(clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, globalWorksize, NULL, 0, NULL, &event)))
     {
         cleanUpOpenCL(context, commandQueue, program, kernel, memoryObjects, numberOfMemoryObjects);
         cerr << "Failed enqueuing the kernel. " << __FILE__ << ":"<< __LINE__ << endl;
         return 1;
     }
-    /* [Global work size] */
+    // [Global work size]
 
-    /* Wait for kernel execution completion. */
+    // Wait for kernel execution completion. 
     if (!checkSuccess(clFinish(commandQueue)))
     {
         cleanUpOpenCL(context, commandQueue, program, kernel, memoryObjects, numberOfMemoryObjects);
@@ -283,9 +286,9 @@ int main(void)
         return 1;
     }
 
-    /* Print the profiling information for the event. */
+    // Print the profiling information for the event.
     printProfilingInfo(event);
-    /* Release the event object. */
+    // Release the event object.
     if (!checkSuccess(clReleaseEvent(event)))
     {
        cleanUpOpenCL(context, commandQueue, program, kernel, memoryObjects, numberOfMemoryObjects);
@@ -293,7 +296,7 @@ int main(void)
        return 1;
     }
 
-    /* Get a pointer to the output data. */
+    // Get a pointer to the output data.
     cl_int* output = (cl_int*)clEnqueueMapBuffer(commandQueue, memoryObjects[2], CL_TRUE, CL_MAP_READ, 0, bufferSize, 0, NULL, NULL, &errorNumber);
     if (!checkSuccess(errorNumber))
     {
@@ -302,17 +305,17 @@ int main(void)
        return 1;
     }
 
-    /* [Output the results] */
-    /* Uncomment the following block to print results. */
+    // [Output the results] 
+    // Uncomment the following block to print results. 
     /*
     for (int i = 0; i < arraySize; i++)
     {
         cout << "i = " << i << ", output = " <<  output[i] << "\n";
     }
-    */
-    /* [Output the results] */
+    *
+    // [Output the results] 
 
-    /* Unmap the memory object as we are finished using them from the CPU side. */
+    // Unmap the memory object as we are finished using them from the CPU side. 
     if (!checkSuccess(clEnqueueUnmapMemObject(commandQueue, memoryObjects[2], output, 0, NULL, NULL)))
     {
        cleanUpOpenCL(context, commandQueue, program, kernel, memoryObjects, numberOfMemoryObjects);
@@ -320,6 +323,7 @@ int main(void)
        return 1;
     }
 
-    /* Release OpenCL objects. */
+    // Release OpenCL objects.
     cleanUpOpenCL(context, commandQueue, program, kernel, memoryObjects, numberOfMemoryObjects);
+	*/
 }
